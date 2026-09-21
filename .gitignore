@@ -1,0 +1,37 @@
+# Dataset and generated predictions
+data/
+dataset/
+*.csv
+
+# Python
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Notebooks
+.ipynb_checkpoints/
+
+# Environments and secrets
+.venv/
+venv/
+.env
+
+# Editors and operating systems
+.DS_Store
+.idea/
+.vscode/
+
+# Generated report files
+report/*.aux
+report/*.bbl
+report/*.blg
+report/*.log
+report/*.out
+report/*.synctex.gz
+
+# Model artifacts and temporary outputs
+artifacts/
+outputs/
+
