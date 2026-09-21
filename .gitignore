@@ -3,6 +3,9 @@ data/
 dataset/
 *.csv
 
+# Course handout kept locally; not part of the team submission
+project1_description.pdf
+
 # Python
 __pycache__/
 *.py[cod]
@@ -34,4 +37,3 @@ report/*.synctex.gz
 # Model artifacts and temporary outputs
 artifacts/
 outputs/
-
