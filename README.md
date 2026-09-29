@@ -19,8 +19,10 @@ Build a reproducible binary-classification pipeline for predicting the `_MICHD` 
 ├── README.md
 ├── implementations.py       # Six required course methods
 ├── run.py                   # Reproduce the final prediction file
+├── explore_data.py          # Reproducible data-quality report
 ├── src/
-│   └── data_io.py           # NumPy CSV loader and validation
+│   ├── data_io.py           # NumPy CSV loader and validation
+│   └── data_exploration.py  # Feature profiling utilities
 ├── notebooks/               # Exploratory analysis only
 ├── report/                  # LaTeX report source and figures
 └── tests/                   # Team-written tests
@@ -67,6 +69,25 @@ y_logistic, x, train_ids, feature_names = load_training_data(
 ```
 
 Empty CSV fields are loaded as `np.nan`. Imputation and feature-specific missing-value handling must be performed explicitly during preprocessing.
+
+## Exploring data quality
+
+Generate a full feature profile and a concise Markdown summary:
+
+```bash
+python explore_data.py --data-dir ../../dataset
+```
+
+For a quicker development run, inspect only the first 5,000 rows:
+
+```bash
+python explore_data.py --data-dir ../../dataset --max-rows 5000
+```
+
+The generated files are written to `outputs/eda/` and include missing-value
+rates, unique-value counts, numeric quantiles, constant-column flags, and
+train/test missing-rate differences. The `outputs/` directory is excluded from
+Git because these reports can always be regenerated.
 
 ## Required implementations
 
