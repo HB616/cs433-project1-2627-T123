@@ -227,4 +227,4 @@ def _compute_logistic_loss(y, tx, w):
     z = tx @ w
     log_term = np.logaddexp(0.0, z) # np.log(1 + np.exp(z)) overflow 
     loss_per_sample = log_term - y * z
-    return float(np.mean(loss_per_sample))
+    return np.mean(loss_per_sample)
