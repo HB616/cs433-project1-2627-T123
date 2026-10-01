@@ -41,12 +41,49 @@ def _solve_linear_system(matrix, vector):
 
 def mean_squared_error_gd(y, tx, initial_w, max_iters, gamma):
     """Train linear regression with batch gradient descent."""
-    raise NotImplementedError("Implementation pending")
+    y, tx = _validate_regression_inputs(y, tx)
+    w = np.asarray(initial_w, dtype=np.float64).copy()
+    if w.ndim != 1 or w.size != tx.shape[1]:
+        raise ValueError("initial_w must be a one-dimensional array of length D")
+    if not np.all(np.isfinite(w)):
+        raise ValueError("initial_w must contain only finite values")
+    if not isinstance(max_iters, (int, np.integer)) or max_iters < 0:
+        raise ValueError("max_iters must be a non-negative integer")
+    if not np.isscalar(gamma) or not np.isfinite(gamma) or gamma < 0:
+        raise ValueError("gamma must be a finite non-negative scalar")
+
+    num_samples = y.size
+    for _ in range(max_iters):
+        residuals = tx @ w - y
+        gradient = tx.T @ residuals / num_samples
+        w = w - gamma * gradient
+
+    loss = _compute_mse(y, tx, w)
+    return w, loss
 
 
 def mean_squared_error_sgd(y, tx, initial_w, max_iters, gamma):
     """Train linear regression with stochastic gradient descent."""
-    raise NotImplementedError("Implementation pending")
+    y, tx = _validate_regression_inputs(y, tx)
+    w = np.asarray(initial_w, dtype=np.float64).copy()
+    if w.ndim != 1 or w.size != tx.shape[1]:
+        raise ValueError("initial_w must be a one-dimensional array of length D")
+    if not np.all(np.isfinite(w)):
+        raise ValueError("initial_w must contain only finite values")
+    if not isinstance(max_iters, (int, np.integer)) or max_iters < 0:
+        raise ValueError("max_iters must be a non-negative integer")
+    if not np.isscalar(gamma) or not np.isfinite(gamma) or gamma < 0:
+        raise ValueError("gamma must be a finite non-negative scalar")
+
+    num_samples = y.size
+    for _ in range(max_iters):
+        sample_index = np.random.randint(num_samples)
+        residual = tx[sample_index] @ w - y[sample_index]
+        gradient = residual * tx[sample_index]
+        w = w - gamma * gradient
+
+    loss = _compute_mse(y, tx, w)
+    return w, loss
 
 
 def least_squares(y, tx):
