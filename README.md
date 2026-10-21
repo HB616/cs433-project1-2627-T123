@@ -115,6 +115,36 @@ means and standard deviations. Validation and test data never influence these
 parameters. BRFSS categorical and sentinel survey codes are intentionally left
 unchanged until their meanings are verified against the feature codebook.
 
+The codebook-aware alternative converts only the per-variable sentinel values
+documented by the official CDC 2015 BRFSS codebook. It median-imputes and
+standardizes numeric variables, adds numeric missingness indicators, and
+one-hot encodes categorical variables with a separate missing category. All
+categories and statistics are learned from the training partition only:
+
+```python
+from src.preprocessing import BRFSSPreprocessor
+
+preprocessor = BRFSSPreprocessor()
+x_train_processed = preprocessor.fit_transform(x_train, feature_names)
+x_validation_processed = preprocessor.transform(x_validation)
+```
+
+Use it in the SVM evaluation with:
+
+```bash
+python evaluate_svm.py \
+  --data-dir ../../dataset \
+  --preprocessing brfss \
+  --max-rows 50000 \
+  --lambda 0.01 \
+  --gamma 0.0001 \
+  --max-iters 200000
+```
+
+The transformed matrix is stored as `float32` because dense one-hot encoding
+increases the number of columns. Optional-module features can be removed with,
+for example, `--max-missing-rate 0.5`; the threshold is fitted on training data.
+
 ## Classification metrics
 
 All models are evaluated through the same NumPy-only metrics implementation:
@@ -149,6 +179,46 @@ The final command will be documented once the training and inference pipeline is
 
 ```bash
 python run.py --data-dir ../../dataset --output outputs/submission.csv
+```
+
+## Evaluating the linear SVM
+
+Run the NumPy-only linear soft-margin SVM on a leakage-safe local validation
+split. By default, the command loads 50,000 rows for a quick development run:
+
+```bash
+python evaluate_svm.py --data-dir ../../dataset
+```
+
+The report compares the SVM against an all-negative dummy baseline using
+accuracy, balanced accuracy, precision, recall, F1-score and specificity.
+Because the target is imbalanced, the default experiment weights positive-class
+hinge loss by `num_negative / num_positive`, calculated from the training split
+only. Pass `--positive-class-weight 1` to disable this balancing.
+Hyperparameters can be changed explicitly:
+
+```bash
+python evaluate_svm.py \
+  --data-dir ../../dataset \
+  --lambda 0.03 \
+  --gamma 0.0003 \
+  --max-iters 100000 \
+  --positive-class-weight 0 \
+  --seed 42
+```
+
+Use `--max-rows 0` only when you want to load the complete training dataset.
+
+Run a reproducible hyperparameter search on one shared split and preprocessing
+fit. Results are ranked by balanced accuracy, then F1-score and recall:
+
+```bash
+python tune_svm.py \
+  --max-rows 50000 \
+  --lambdas 0.001,0.01,0.1 \
+  --class-weight-multipliers 0.5,0.75,1,1.25 \
+  --gammas 0.001 \
+  --iteration-values 100000
 ```
 
 ## Reproducibility

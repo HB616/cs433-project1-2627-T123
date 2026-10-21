@@ -228,3 +228,130 @@ def _compute_logistic_loss(y, tx, w):
     log_term = np.logaddexp(0.0, z) # np.log(1 + np.exp(z)) overflow 
     loss_per_sample = log_term - y * z
     return np.mean(loss_per_sample)
+
+
+#-----------------------------------------------------------------------------------------------
+# linear support vector machine
+#-----------------------------------------------------------------------------------------------
+def linear_svm_sgd(
+    y,
+    tx,
+    lambda_,
+    initial_w,
+    max_iters,
+    gamma,
+    seed=42,
+    positive_class_weight=1.0,
+):
+    """Train a linear soft-margin SVM with stochastic subgradient descent.
+
+    The optimized primal objective is
+
+        mean(max(0, 1 - y * (tx @ w))) + lambda_ / 2 * ||w||^2.
+
+    Labels must use the SVM convention ``{-1, +1}``. At every iteration one
+    training sample is drawn uniformly and its hinge-loss subgradient is used.
+    The learning rate is kept fixed at ``gamma`` so experiments can control it
+    explicitly. Pass an intercept column in ``tx`` if an intercept is desired.
+
+    Args:
+        y: One-dimensional labels in ``{-1, +1}`` with shape ``(N,)``.
+        tx: Feature matrix with shape ``(N, D)``.
+        lambda_: Non-negative L2 regularization strength.
+        initial_w: Initial weights with shape ``(D,)``.
+        max_iters: Number of stochastic updates.
+        gamma: Non-negative learning rate.
+        seed: Seed for the local random-number generator.
+        positive_class_weight: Multiplier applied to positive-class hinge loss.
+            Values greater than one can compensate for class imbalance.
+
+    Returns:
+        A tuple ``(w, loss)`` containing the learned weights and the final
+        regularized primal objective.
+    """
+    y, tx = _validate_svm_inputs(y, tx)
+    w = np.asarray(initial_w, dtype=np.float64).copy()
+    if w.ndim != 1 or w.size != tx.shape[1]:
+        raise ValueError("initial_w must be a one-dimensional array of length D")
+    if not np.all(np.isfinite(w)):
+        raise ValueError("initial_w must contain only finite values")
+    if not np.isscalar(lambda_) or not np.isfinite(lambda_) or lambda_ < 0:
+        raise ValueError("lambda_ must be a finite non-negative scalar")
+    if not isinstance(max_iters, (int, np.integer)) or max_iters < 0:
+        raise ValueError("max_iters must be a non-negative integer")
+    if not np.isscalar(gamma) or not np.isfinite(gamma) or gamma < 0:
+        raise ValueError("gamma must be a finite non-negative scalar")
+    if not isinstance(seed, (int, np.integer)) or seed < 0:
+        raise ValueError("seed must be a non-negative integer")
+    if (
+        not np.isscalar(positive_class_weight)
+        or not np.isfinite(positive_class_weight)
+        or positive_class_weight <= 0
+    ):
+        raise ValueError("positive_class_weight must be a finite positive scalar")
+
+    rng = np.random.default_rng(seed)
+    num_samples = y.size
+
+    for _ in range(max_iters):
+        sample_index = rng.integers(num_samples)
+        sample_x = tx[sample_index]
+        sample_y = y[sample_index]
+        margin = sample_y * (sample_x @ w)
+        sample_weight = positive_class_weight if sample_y == 1 else 1.0
+
+        if margin < 1.0:
+            subgradient = lambda_ * w - sample_weight * sample_y * sample_x
+        else:
+            subgradient = lambda_ * w
+
+        w = w - gamma * subgradient
+
+    loss = _compute_svm_objective(
+        y, tx, w, lambda_, positive_class_weight=positive_class_weight
+    )
+    return w, loss
+
+
+def predict_linear_svm(tx, w):
+    """Predict ``{-1, +1}`` labels with a trained linear SVM."""
+    tx = np.asarray(tx, dtype=np.float64)
+    w = np.asarray(w, dtype=np.float64)
+    if tx.ndim != 2:
+        raise ValueError("tx must be a two-dimensional array")
+    if w.ndim != 1 or w.size != tx.shape[1]:
+        raise ValueError("w must be a one-dimensional array of length D")
+    if not np.all(np.isfinite(tx)) or not np.all(np.isfinite(w)):
+        raise ValueError("tx and w must contain only finite values")
+
+    scores = tx @ w
+    return np.where(scores >= 0.0, 1, -1)
+
+
+def _validate_svm_inputs(y, tx):
+    """Return validated arrays for a binary SVM using ``{-1, +1}`` labels."""
+    y = np.asarray(y, dtype=np.float64)
+    tx = np.asarray(tx)
+    if not np.issubdtype(tx.dtype, np.number):
+        tx = np.asarray(tx, dtype=np.float64)
+    if y.ndim != 1:
+        raise ValueError("y must be a one-dimensional array")
+    if tx.ndim != 2:
+        raise ValueError("tx must be a two-dimensional array")
+    if tx.shape[0] != y.size:
+        raise ValueError("tx and y must contain the same number of samples")
+    if y.size == 0 or tx.shape[1] == 0:
+        raise ValueError("y and tx must not be empty")
+    if not np.all(np.isfinite(tx)):
+        raise ValueError("tx must contain only finite values")
+    if not np.all((y == -1) | (y == 1)):
+        raise ValueError("y must contain only -1 and 1 for linear SVM")
+    return y, tx
+
+
+def _compute_svm_objective(y, tx, w, lambda_, positive_class_weight=1.0):
+    """Compute mean hinge loss plus the L2 regularization penalty."""
+    margins = y * (tx @ w)
+    hinge_loss = np.maximum(0.0, 1.0 - margins)
+    sample_weights = np.where(y == 1, positive_class_weight, 1.0)
+    return np.mean(sample_weights * hinge_loss) + 0.5 * lambda_ * np.dot(w, w)
