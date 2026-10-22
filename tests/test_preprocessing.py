@@ -4,7 +4,11 @@ import unittest
 
 import numpy as np
 
-from src.preprocessing import BasicPreprocessor, stratified_split_indices
+from src.preprocessing import (
+    BRFSSPreprocessor,
+    BasicPreprocessor,
+    stratified_split_indices,
+)
 
 
 class StratifiedSplitTests(unittest.TestCase):
@@ -87,6 +91,73 @@ class BasicPreprocessorTests(unittest.TestCase):
     def test_transform_before_fit_fails(self):
         with self.assertRaisesRegex(RuntimeError, "fitted"):
             BasicPreprocessor().transform(self.x_train)
+
+
+class BRFSSPreprocessorTests(unittest.TestCase):
+    """Verify codebook sentinels, one-hot encoding and leakage protection."""
+
+    def setUp(self):
+        self.names = ("PHYSHLTH", "GENHLTH", "SEX")
+        self.x_train = np.array(
+            [
+                [0.0, 1.0, 1.0],
+                [5.0, 2.0, 2.0],
+                [77.0, 7.0, 1.0],
+                [99.0, 9.0, 2.0],
+            ]
+        )
+
+    def test_sentinels_become_missing_and_categories_are_one_hot(self):
+        preprocessor = BRFSSPreprocessor()
+
+        transformed = preprocessor.fit_transform(self.x_train, self.names)
+
+        self.assertEqual(transformed.shape, (4, 7))
+        self.assertEqual(transformed.dtype, np.float32)
+        self.assertEqual(
+            preprocessor.feature_names_out_,
+            (
+                "PHYSHLTH",
+                "PHYSHLTH==MISSING",
+                "GENHLTH==1",
+                "GENHLTH==2",
+                "GENHLTH==MISSING",
+                "SEX==1",
+                "SEX==2",
+            ),
+        )
+        np.testing.assert_array_equal(transformed[:, 1], [0.0, 0.0, 1.0, 1.0])
+        np.testing.assert_array_equal(transformed[:, 2:5].sum(axis=1), 1.0)
+        np.testing.assert_array_equal(transformed[:, 5:7].sum(axis=1), 1.0)
+        self.assertFalse(np.isnan(transformed).any())
+
+    def test_transform_reuses_categories_and_handles_unseen_values(self):
+        preprocessor = BRFSSPreprocessor().fit(self.x_train, self.names)
+        validation = np.array(
+            [
+                [77.0, 3.0, 2.0],
+                [10.0, 7.0, 3.0],
+            ]
+        )
+
+        transformed = preprocessor.transform(validation)
+
+        # GENHLTH=3 and SEX=3 were unseen during fit and therefore produce
+        # all-zero category blocks instead of changing the learned shape.
+        np.testing.assert_array_equal(transformed[0, 2:5], [0.0, 0.0, 0.0])
+        np.testing.assert_array_equal(transformed[1, 2:5], [0.0, 0.0, 1.0])
+        np.testing.assert_array_equal(transformed[1, 5:7], [0.0, 0.0])
+        self.assertEqual(transformed.shape, (2, 7))
+
+    def test_calculated_missingness_feature_is_kept_as_category(self):
+        x = np.array([[0.0], [1.0], [9.0]])
+        preprocessor = BRFSSPreprocessor()
+
+        transformed = preprocessor.fit_transform(x, ("PAMISS1_",))
+
+        self.assertEqual(transformed.shape, (3, 3))
+        self.assertNotIn("PAMISS1_==MISSING", preprocessor.feature_names_out_)
+        np.testing.assert_array_equal(transformed.sum(axis=1), 1.0)
 
 
 if __name__ == "__main__":
