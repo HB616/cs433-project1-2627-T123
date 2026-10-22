@@ -1,0 +1,44 @@
+================================================================================
+Random Forest Experiment
+================================================================================
+data_dir         : C:\Users\Administrator\Desktop\proj1\dataset
+max_rows         : None
+validation_ratio : 0.2
+seed             : 42
+criterion        : gini
+num_trees        : 50
+max_depth        : 10
+min_samples_split: 20
+max_features     : sqrt
+thresholds       : [0.3, 0.4, 0.5, 0.6, 0.7]
+class_balance    : 9.0
+--------------------------------------------------------------------------------
+[1/6] Loading data ...
+      x: (328135, 321), y: (328135,), pos_rate=0.0883  (58.84s)
+[2/6] Stratified split ...
+      train: (262508, 321), val: (65627, 321)
+      train pos_rate=0.0883, val pos_rate=0.0883
+[3/6] Preprocessing ...
+      kept 315/321 features
+      dropped: 6
+[4/6] Training random forest ...
+      train_time = 447.35s
+      train_loss = 0.424642
+[5/6] Evaluating on validation set ...
+      predict_time = 1.62s (40485 samples/s)
+      prob_val: min=0.0331, max=0.9136, mean=0.3272
+
+Validation metrics at different thresholds
+  thr |     acc |    prec |     rec |    spec |      F1 |  bal_acc
+------------------------------------------------------------------
+ 0.30 |  0.5930 |  0.1696 |  0.9267 |  0.5607 |  0.2868 |   0.7437
+ 0.40 |  0.6847 |  0.2017 |  0.8690 |  0.6669 |  0.3274 |   0.7680
+ 0.50 |  0.7698 |  0.2452 |  0.7729 |  0.7695 |  0.3723 |   0.7712
+ 0.60 |  0.8463 |  0.3112 |  0.6110 |  0.8690 |  0.4124 |   0.7400
+ 0.70 |  0.8952 |  0.3963 |  0.3579 |  0.9472 |  0.3761 |   0.6525
+
+>>> Best threshold by F1: 0.6 (F1 = 0.4124)
+[6/6] Summary
+--------------------------------------------------------------------------------
+Model                     criterion      F1@0.5    F1@best  train_time(s)
+RandomForest              gini           0.3723     0.4124         447.35

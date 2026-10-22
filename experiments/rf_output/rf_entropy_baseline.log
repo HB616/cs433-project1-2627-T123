@@ -1,0 +1,43 @@
+================================================================================
+Random Forest Experiment
+================================================================================
+data_dir         : C:\Users\Administrator\Desktop\proj1\dataset
+max_rows         : None
+validation_ratio : 0.2
+seed             : 42
+criterion        : entropy
+num_trees        : 50
+max_depth        : 15
+min_samples_split: 20
+max_features     : sqrt
+thresholds       : [0.1, 0.2, 0.3, 0.4, 0.5]
+--------------------------------------------------------------------------------
+[1/6] Loading data ...
+      x: (328135, 321), y: (328135,), pos_rate=0.0883  (65.30s)
+[2/6] Stratified split ...
+      train: (262508, 321), val: (65627, 321)
+      train pos_rate=0.0883, val pos_rate=0.0883
+[3/6] Preprocessing ...
+      kept 315/321 features
+      dropped: 6
+[4/6] Training random forest ...
+      train_time = 465.92s
+      train_loss = 0.174442
+[5/6] Evaluating on validation set ...
+      predict_time = 2.21s (29762 samples/s)
+      prob_val: min=0.0007, max=0.7321, mean=0.0879
+
+Validation metrics at different thresholds
+  thr |     acc |    prec |     rec |    spec |      F1 |  bal_acc
+------------------------------------------------------------------
+ 0.10 |  0.7355 |  0.2266 |  0.8273 |  0.7266 |  0.3558 |   0.7769
+ 0.20 |  0.8655 |  0.3395 |  0.5532 |  0.8958 |  0.4208 |   0.7245
+ 0.30 |  0.9063 |  0.4497 |  0.2725 |  0.9677 |  0.3394 |   0.6201
+ 0.40 |  0.9142 |  0.5820 |  0.1004 |  0.9930 |  0.1713 |   0.5467
+ 0.50 |  0.9129 |  0.7167 |  0.0223 |  0.9991 |  0.0432 |   0.5107
+
+>>> Best threshold by F1: 0.2 (F1 = 0.4208)
+[6/6] Summary
+--------------------------------------------------------------------------------
+Model                     criterion      F1@0.5    F1@best  train_time(s)
+RandomForest              entropy        0.0432     0.4208         465.92
