@@ -1,0 +1,64 @@
+\documentclass[10pt,a4paper]{article}
+
+\usepackage[margin=0.78in]{geometry}
+\usepackage[default]{sourcesanspro}
+\usepackage{microtype}
+\usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage{amsmath}
+\usepackage[hidelinks]{hyperref}
+\usepackage{fancyhdr}
+\usepackage{lastpage}
+\usepackage{titlesec}
+
+\setlength{\parindent}{0pt}
+\setlength{\parskip}{5pt}
+\titleformat{\section}{\large\bfseries}{\thesection}{0.65em}{}
+\titleformat{\subsection}{\normalsize\bfseries}{\thesubsection}{0.55em}{}
+\titlespacing*{\section}{0pt}{7pt}{3pt}
+\titlespacing*{\subsection}{0pt}{6pt}{2pt}
+
+\pagestyle{fancy}
+\fancyhf{}
+\renewcommand{\headrulewidth}{0pt}
+\fancyhead[L]{\small EPFL CS-433 Machine Learning}
+\fancyhead[R]{\small Project 1 -- SVM Working Report}
+\fancyfoot[R]{\small \thepage\ / \pageref{LastPage}}
+
+\begin{document}
+
+\begin{center}
+  {\LARGE\bfseries Linear SVM for MICHD Risk Prediction\par}
+  \vspace{4pt}
+  {\normalsize Team T123 -- [Author name(s)] -- Autumn 2026}
+\end{center}
+
+\begin{abstract}
+We developed a NumPy-only linear soft-margin SVM for predicting myocardial
+infarction or coronary heart disease from the imbalanced BRFSS survey data.
+Codebook-aware missing-value handling and categorical encoding were combined
+with positive-class-weighted hinge loss. On a complete-data stratified holdout,
+threshold zero achieved 0.7710 balanced accuracy, 0.7284 recall, and 0.3989 F1.
+Selecting threshold 0.5009 by validation F1 yielded local F1 0.432 and accuracy
+0.868; the hidden-test AIcrowd result (F1 0.431, accuracy 0.866) closely matched
+these values, providing a reproducible SVM contribution for the group report.
+\end{abstract}
+
+\input{svm-section.tex}
+
+\section*{Reproducibility}
+
+The report statistics and figures are regenerated from the raw course dataset
+with:
+\begin{verbatim}
+python3 generate_svm_report_assets.py \
+  --data-dir ../../dataset --max-rows 0 \
+  --output-dir report/svm/assets
+\end{verbatim}
+The final AIcrowd prediction file is generated with:
+\begin{verbatim}
+python3 run.py --data-dir ../../dataset \
+  --output outputs/submission-svm-brfss.csv
+\end{verbatim}
+
+\end{document}

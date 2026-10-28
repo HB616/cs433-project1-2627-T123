@@ -138,3 +138,45 @@ the complete validation split. The automatic class weight remains preferable
 when detecting positive cases is important; halving it reduces false positives
 and gives the stronger F1/precision compromise. These results still use one
 holdout split, so final report claims should acknowledge split sensitivity.
+
+## Final training and submission generation
+
+The selected balanced-accuracy configuration was fitted again on all 328,135
+labeled rows. Preprocessing was refitted on the complete training set before
+transforming the held-out competition test set.
+
+- Raw input features: 321
+- Processed features: 1,195 including the intercept
+- Dropped raw features: 3
+- Positive-class weight: 10.3248
+- Training updates: 200,000
+- Test rows predicted: 109,379
+- Positive predictions: 26,207 (23.96%)
+- Output: `outputs/submission-svm-brfss.csv`
+
+The output was checked against `sample_submission.csv`: its header is exactly
+`Id,Prediction`, all 109,379 IDs match in the original order, and every
+prediction belongs to `{-1, +1}`. Competition output files remain excluded
+from Git because they can be reproduced by `run.py`.
+
+## Final report reproducibility rerun
+
+The report-asset pipeline reran the selected configuration after the final
+memory optimization, which preserves the dense one-hot matrix as `float32`
+when adding the intercept. On the same complete-data split, the current code
+produced balanced accuracy 0.7710, F1 0.3989, recall 0.7284 and accuracy 0.8062.
+These are the figures used in `report/svm/`. The small difference from the
+earlier tuning record is attributable to the representation precision; the
+configuration, split and seed are unchanged. At threshold zero, the hidden
+AIcrowd result was F1 0.401 and accuracy 0.804. The validation-selected
+threshold 0.5008938106 improved the hidden-test result to F1 0.431 and accuracy
+0.866, closely matching its local validation scores of 0.432 and 0.868.
+
+Reproduce the current statistics, CSV tables and figures with:
+
+```bash
+python3 generate_svm_report_assets.py \
+  --data-dir ../../dataset \
+  --max-rows 0 \
+  --output-dir report/svm/assets
+```

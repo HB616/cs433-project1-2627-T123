@@ -1,0 +1,30 @@
+{
+  "configuration": {
+    "loaded_rows": 328135,
+    "training_rows": 262508,
+    "validation_rows": 65627,
+    "processed_features_including_intercept": 1194,
+    "validation_ratio": 0.2,
+    "lambda": 0.01,
+    "gamma": 0.0001,
+    "max_iters": 200000,
+    "seed": 42,
+    "positive_class_weight": 10.324762726488352,
+    "objective_at_training_threshold": 0.9859016169012347
+  },
+  "selected_by": "maximum positive-class F1; balanced accuracy tie-break",
+  "selected_threshold": {
+    "threshold": 0.5008938105844928,
+    "true_negative": 53706,
+    "false_positive": 6126,
+    "false_negative": 2514,
+    "true_positive": 3281,
+    "accuracy": 0.8683468694287412,
+    "precision": 0.3487828213032848,
+    "recall": 0.5661777394305436,
+    "specificity": 0.8976133172884075,
+    "f1_score": 0.43165372977239835,
+    "balanced_accuracy": 0.7318955283594756
+  },
+  "num_thresholds_evaluated": 302
+}

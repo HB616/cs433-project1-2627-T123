@@ -175,11 +175,30 @@ Each function returns `(w, loss)`, where `w` is a one-dimensional NumPy array.
 
 ## Running the project
 
-The final command will be documented once the training and inference pipeline is implemented. The intended interface is:
+Train the selected BRFSS-preprocessed Linear SVM on all labeled rows and create
+the AIcrowd submission with one command:
 
 ```bash
-python run.py --data-dir ../../dataset --output outputs/submission.csv
+python3 run.py \
+  --data-dir ../../dataset \
+  --output outputs/submission-svm-brfss.csv
 ```
+
+The default final configuration is the complete-data validation winner for
+balanced accuracy and recall: `lambda=0.01`, `gamma=0.0001`, 200,000 updates,
+automatic positive-class weighting, `seed=42`, and the validation-selected
+decision threshold `0.5008938106`. `run.py` fits every
+preprocessing statistic and category on the complete training set, trains the
+model, predicts the 109,379 test rows, validates the labels, and preserves the
+test IDs in their original order.
+
+The generated CSV is intentionally excluded from Git and should be uploaded
+manually to AIcrowd. Use `--max-train-rows` only for development smoke tests,
+not for the final submission.
+
+This thresholded submission achieved an AIcrowd F1 score of 0.431 and accuracy
+of 0.866, closely matching the local validation scores of 0.432 and 0.868.
+Pass `--decision-threshold 0` only to reproduce the earlier operating point.
 
 ## Evaluating the linear SVM
 
@@ -220,6 +239,19 @@ python tune_svm.py \
   --gammas 0.001 \
   --iteration-values 100000
 ```
+
+Generate the complete-data SVM statistics, inspectable CSV/JSON outputs, and
+report figures with:
+
+```bash
+python3 generate_svm_report_assets.py \
+  --data-dir ../../dataset \
+  --max-rows 0 \
+  --output-dir report/svm/assets
+```
+
+The standalone Overleaf report is `report/svm/svm-report.tex`; the modular
+`report/svm/svm-section.tex` can be merged into the final team report.
 
 ## Reproducibility
 

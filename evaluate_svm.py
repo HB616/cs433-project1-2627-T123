@@ -67,10 +67,12 @@ def parse_args():
 
 def add_intercept(x):
     """Prepend a column of ones to a two-dimensional feature matrix."""
-    x = np.asarray(x, dtype=np.float64)
+    x = np.asarray(x)
     if x.ndim != 2:
         raise ValueError("x must be a two-dimensional feature matrix")
-    return np.column_stack((np.ones(x.shape[0]), x))
+    if not np.issubdtype(x.dtype, np.floating):
+        x = x.astype(np.float64)
+    return np.column_stack((np.ones(x.shape[0], dtype=x.dtype), x))
 
 
 def run_svm_experiment(

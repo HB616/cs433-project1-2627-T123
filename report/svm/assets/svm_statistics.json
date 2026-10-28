@@ -1,0 +1,49 @@
+{
+  "configuration": {
+    "validation_ratio": 0.2,
+    "lambda": 0.01,
+    "gamma": 0.0001,
+    "max_iters": 200000,
+    "seed": 42,
+    "positive_class_weight": 10.324762726488352,
+    "preprocessing": "brfss"
+  },
+  "dataset": {
+    "loaded_rows": 328135,
+    "negative_rows": 299160,
+    "positive_rows": 28975
+  },
+  "experiment": {
+    "objective": 0.9859016169012347,
+    "positive_class_weight": 10.324762726488352,
+    "num_training_rows": 262508,
+    "num_validation_rows": 65627,
+    "num_input_features": 321,
+    "num_processed_features": 1194,
+    "preprocessing": "brfss"
+  },
+  "svm_metrics": {
+    "true_negative": 48685,
+    "false_positive": 11147,
+    "false_negative": 1574,
+    "true_positive": 4221,
+    "accuracy": 0.8061620979170159,
+    "precision": 0.27466163456533055,
+    "recall": 0.7283865401207937,
+    "specificity": 0.8136950127022329,
+    "f1_score": 0.39890374710579785,
+    "balanced_accuracy": 0.7710407764115133
+  },
+  "dummy_metrics": {
+    "true_negative": 59832,
+    "false_positive": 0,
+    "false_negative": 5795,
+    "true_positive": 0,
+    "accuracy": 0.911697929205967,
+    "precision": 0.0,
+    "recall": 0.0,
+    "specificity": 1.0,
+    "f1_score": 0.0,
+    "balanced_accuracy": 0.5
+  }
+}
