@@ -1,0 +1,182 @@
+\documentclass[10pt,a4paper]{article}
+
+% Two-page submission version; compile with LuaLaTeX.
+\usepackage[margin=0.68in,headheight=13pt,headsep=10pt,footskip=18pt]{geometry}
+\usepackage[default]{sourcesanspro}
+\usepackage{amsmath,booktabs,microtype,titlesec,fancyhdr}
+\usepackage[font=footnotesize,labelfont=bf,skip=3pt]{caption}
+\usepackage[hidelinks]{hyperref}
+
+\setlength{\parindent}{0pt}
+\setlength{\parskip}{3pt}
+\raggedbottom
+\titleformat{\section}{\fontsize{12}{14}\selectfont\bfseries}{\thesection}{0.55em}{}
+\titlespacing*{\section}{0pt}{5pt}{2pt}
+\setlength{\textfloatsep}{5pt plus 2pt minus 2pt}
+\setlength{\floatsep}{4pt plus 2pt minus 2pt}
+
+\pagestyle{fancy}
+\fancyhf{}
+\renewcommand{\headrulewidth}{0pt}
+\fancyhead[L]{\fontsize{8}{9}\selectfont EPFL CS-433 Machine Learning}
+\fancyhead[R]{\fontsize{8}{9}\selectfont Project 1 -- Team T123}
+\fancyfoot[C]{\fontsize{8}{9}\selectfont \thepage}
+
+\begin{document}
+
+{\centering
+{\fontsize{15}{17}\selectfont\bfseries Predicting Cardiovascular Disease Risk from BRFSS Data\par}
+\vspace{3pt}
+{\small Haobin Wang, Yunxin Huang, Chaoqi Xu \hfill Team T123, Autumn 2026\par}
+}
+
+\section{Introduction and Dataset}
+
+We study binary classification of myocardial infarction or coronary heart
+disease (\texttt{\_MICHD}) using the 2015 Behavioral Risk Factor Surveillance
+System (BRFSS). The dataset contains 328,135 labeled respondents and 321 health
+and lifestyle features: 28,975 positive cases and 299,160 negative cases, so
+only 8.83\% of observations are positive. Consequently, ordinary accuracy can
+favor the negative class. Our objective is to compare
+L2-regularized logistic regression, a class-weighted linear SVM, and a random
+forest, and to assess how preprocessing, imbalance handling, feature
+engineering, and decision-threshold selection affect positive-class detection.
+The target was encoded as $+1$ for disease and $-1$ otherwise. In accordance
+with the project rules, model training and evaluation were implemented with
+NumPy rather than external machine-learning libraries.
+
+\section{Preprocessing and Validation}
+
+We used the same 80/20 stratified training--validation split with
+\textbf{seed 42} for all models, giving 262,508 training and 65,627 validation
+examples while preserving class proportions. Every
+preprocessing parameter was learned on the training partition and applied
+unchanged to validation data. The \emph{Basic} pipeline removed constant and
+entirely missing columns, median-imputed missing values, and standardized the
+remaining variables. The \emph{BRFSS} pipeline additionally used the survey
+codebook to map feature-specific ``Don't know'' and ``Refused'' codes to
+missing, added numerical missingness indicators, and one-hot encoded
+categorical variables. We report accuracy, balanced accuracy, precision,
+recall, and positive-class F1. F1 summarizes the precision--recall compromise,
+whereas balanced accuracy gives equal importance to sensitivity and
+specificity; both are more informative than raw accuracy under this imbalance.
+Specifically, $F1=2PR/(P+R)$ and balanced accuracy is the mean of recall and
+specificity. Test IDs were kept separate from features so predictions could be
+returned in the original AIcrowd order.
+
+\section{Models}
+
+\textbf{3.1 L2-regularized logistic regression.}
+Basic preprocessing retained 315 of 321 features. All 23,180 positive training
+examples were paired with an equal random sample of negatives. Our NumPy model
+minimized binary cross-entropy plus $\lambda\lVert\mathbf{w}\rVert_2^2$
+without penalizing the intercept. Mini-batch gradient descent used 20 epochs,
+batch size 2,048, $\lambda=10^{-4}$, and learning rate
+$0.1/\sqrt{1+e/5}$. Thresholds maximizing accuracy, balanced accuracy, and F1
+were compared on the unchanged validation set. The fitted probability score
+$\sigma(\mathbf{x}^{\top}\mathbf{w}+b)$ was converted to a class label only
+after selecting the operating threshold, leaving the learned weights fixed.
+Accuracy and balanced-accuracy thresholds were searched on a 0.005 grid; the
+F1 threshold was selected from the distinct validation scores.
+
+\textbf{3.2 Class-weighted linear SVM.}
+The SVM used BRFSS preprocessing, yielding 1,194 features including the
+intercept. Its NumPy soft-margin objective was
+$N^{-1}\sum_i\alpha_i\max(0,1-y_i\mathbf{w}^{\top}\mathbf{x}_i)
++\frac{\lambda}{2}\lVert\mathbf{w}\rVert_2^2$, with positive weight 10.3248
+and negative weight 1. Stochastic subgradient descent used
+$\lambda=0.01$, learning rate $10^{-4}$, 200,000 updates, and seed 42.
+Validation F1 selected decision threshold 0.5009 instead of the standard
+threshold zero. We evaluated 302 candidate thresholds derived from validation
+decision scores, using balanced accuracy only to break an F1 tie.
+
+\textbf{3.3 Random forest.}
+Basic preprocessing outperformed the high-dimensional BRFSS representation.
+The forest averaged positive-class probabilities from 60 bootstrap-trained
+trees using Gini impurity, maximum depth 12, and
+$\lfloor\sqrt{d}\rfloor$ candidate features per split. A functional-limitation
+count derived from five survey items raised validation F1 from 0.417 to 0.424.
+Invalid responses in these items were treated as missing. Thresholds from 0.15
+to 0.25 were evaluated in increments of 0.01, selecting 0.18; greater depth,
+more candidate features, and class resampling gave negligible gains at higher
+computational cost. Unlike the two linear models, the forest can represent
+nonlinear interactions without explicit polynomial feature expansion.
+
+\newpage
+
+\section{Results}
+
+\begin{table}[h]
+\centering
+\small
+\caption{Local validation performance at each model's F1-selected threshold.}
+\label{tab:comparison}
+\begin{tabular}{lrrrrrr}
+\toprule
+Model & Threshold & Accuracy & Balanced acc. & Precision & Recall & F1 \\
+\midrule
+L2 logistic regression & 0.737 & \textbf{0.871} & 0.711 & 0.345 & 0.516 & 0.414 \\
+Weighted linear SVM & 0.5009 & 0.868 & 0.732 & \textbf{0.349} & 0.566 & \textbf{0.432} \\
+Random forest & 0.18 & 0.856 & \textbf{0.737} & 0.325 & \textbf{0.593} & 0.424 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Threshold selection substantially changed minority-class detection. Logistic
+regression's accuracy-oriented threshold 0.940 produced accuracy 0.913 but only
+F1 0.110 and recall 0.061; its F1 threshold 0.737 increased F1 to 0.414 and
+recall to 0.516. For the random forest, threshold 0.5 similarly produced
+accuracy 0.912 but only F1 0.015 and recall 0.008, whereas threshold 0.18 raised
+F1 to approximately 0.424 and recall to 0.593.
+
+For the SVM, moving the threshold from 0 to 0.5009 reduced false positives from
+11,147 to 6,126 and raised precision from 0.275 to 0.349. Local accuracy rose
+from 0.806 to 0.868 and F1 from 0.399 to 0.432, while recall decreased from
+0.729 to 0.566 and balanced accuracy from 0.771 to 0.732. Thus, threshold 0.5009
+is F1-oriented rather than uniformly superior. On AIcrowd, it obtained
+\textbf{F1 0.431 and accuracy 0.866}, closely matching local validation
+(0.432 and 0.868). The earlier threshold-zero submission obtained F1 0.401 and
+accuracy 0.804.
+
+The all-negative reference illustrates why raw accuracy is insufficient: it
+achieves 91.17\% accuracy but zero recall and F1 for the positive class. Across
+the tuned models, the SVM achieved the highest local F1, the forest achieved
+the highest recall and balanced accuracy, and logistic regression achieved the
+highest ordinary accuracy.
+
+\section{Discussion}
+
+The results show that the operating threshold is as important as the model
+family under strong imbalance. Default or accuracy-oriented thresholds favored
+the majority class, whereas F1-based calibration produced useful positive-class
+detection. The SVM offered the strongest F1 compromise: raising its threshold
+removed many false positives and improved precision and accuracy, but inevitably
+missed more positive cases. The preferred threshold therefore depends on the
+relative cost of false alarms and missed cardiovascular-risk cases. The close
+agreement between the SVM's local and AIcrowd scores suggests that the shared
+holdout was representative of the hidden test set.
+
+The comparison does not isolate model family completely. Logistic regression
+used balanced sampling with Basic preprocessing, the SVM used class weighting
+with codebook-aware one-hot features, and the forest used an engineered
+functional-limitation count. Differences may therefore reflect preprocessing
+and imbalance strategies as well as the estimators themselves. A common-pipeline
+ablation would provide a more controlled comparison.
+
+\section{Limitations and Conclusion}
+
+Thresholds were selected and reported on the same validation split, so the
+local F1 values are tuning estimates rather than independent generalization
+estimates. Repeated cross-validation or an untouched holdout would better
+quantify uncertainty. BRFSS predictors and labels are self-reported, and their
+substantial, potentially informative missingness can introduce bias. A linear
+SVM may also miss nonlinear interactions, while a deeper forest increased
+computational cost without clear gains.
+
+Within these limitations, all three models benefited from threshold tuning.
+The class-weighted linear SVM produced the highest local F1 and nearly identical
+AIcrowd performance, making it the strongest current F1-oriented submission.
+Future work should evaluate all models under identical preprocessing and use
+repeated validation before fixing a final operating threshold.
+
+\end{document}

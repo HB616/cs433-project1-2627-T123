@@ -1,264 +1,238 @@
 # EPFL CS-433 Machine Learning - Project 1
 
-Heart-disease risk prediction project for the EPFL CS-433 Machine Learning course, Fall 2026.
+Team T123: Haobin Wang, Yunxin Huang, Chaoqi Xu
 
-## Team
+This repository contains our NumPy-only solution for predicting the BRFSS
+`_MICHD` label. It includes the six required course implementations, data
+loading and preprocessing, leakage-safe validation, model experiments, report
+sources, and the script that reproduces our best AIcrowd submission.
 
-- Member 1: to be added
-- Member 2: to be added
-- Member 3: to be added
+## Reproduce the best submission
 
-## Project objective
-
-Build a reproducible binary-classification pipeline for predicting the `_MICHD` label from the BRFSS health survey data. The project includes implementations of six required machine-learning methods, data preparation, local validation, feature engineering, model comparison, and generation of an AIcrowd submission.
-
-## Repository structure
-
-```text
-.
-├── README.md
-├── implementations.py       # Six required course methods
-├── run.py                   # Reproduce the final prediction file
-├── explore_data.py          # Reproducible data-quality report
-├── src/
-│   ├── data_io.py           # NumPy CSV loader and validation
-│   ├── data_exploration.py  # Feature profiling utilities
-│   ├── preprocessing.py     # Stratified split and baseline preprocessing
-│   └── metrics.py           # Binary classification evaluation
-├── notebooks/               # Exploratory analysis only
-├── report/                  # LaTeX report source and figures
-└── tests/                   # Team-written tests
-```
-
-The CSV dataset is intentionally excluded from Git. By default, `run.py` expects it in:
-
-```text
-../../dataset/
-```
-
-That directory must contain:
-
-```text
-x_train.csv
-y_train.csv
-x_test.csv
-sample_submission.csv
-```
-
-## Allowed dependencies
-
-- Python standard library
-- NumPy
-- Visualization libraries only for visualization
-
-External machine-learning libraries such as pandas, scikit-learn, PyTorch and TensorFlow are not allowed for Project 1.
-
-## Loading the dataset
-
-```python
-from src.data_io import load_test_data, load_training_data
-
-y, x, train_ids, feature_names = load_training_data("../../dataset")
-x_test, test_ids, test_feature_names = load_test_data("../../dataset")
-```
-
-For logistic regression, request labels in `{0, 1}`:
-
-```python
-y_logistic, x, train_ids, feature_names = load_training_data(
-    "../../dataset", logistic_labels=True
-)
-```
-
-Empty CSV fields are loaded as `np.nan`. Imputation and feature-specific missing-value handling must be performed explicitly during preprocessing.
-
-## Exploring data quality
-
-Generate a full feature profile and a concise Markdown summary:
-
-```bash
-python explore_data.py --data-dir ../../dataset
-```
-
-For a quicker development run, inspect only the first 5,000 rows:
-
-```bash
-python explore_data.py --data-dir ../../dataset --max-rows 5000
-```
-
-The generated files are written to `outputs/eda/` and include missing-value
-rates, unique-value counts, numeric quantiles, constant-column flags, and
-train/test missing-rate differences. The `outputs/` directory is excluded from
-Git because these reports can always be regenerated.
-
-## Baseline preprocessing
-
-The baseline preprocessing utilities provide a reproducible stratified split
-and a leakage-safe transformation:
-
-```python
-from src.preprocessing import BasicPreprocessor, stratified_split_indices
-
-train_idx, validation_idx = stratified_split_indices(y, seed=42)
-
-preprocessor = BasicPreprocessor()
-x_train = preprocessor.fit_transform(
-    x[train_idx], feature_names=feature_names
-)
-x_validation = preprocessor.transform(x[validation_idx])
-x_test_processed = preprocessor.transform(x_test)
-```
-
-`BasicPreprocessor` removes all-missing and constant training columns, imputes
-remaining missing values with training medians, and standardizes using training
-means and standard deviations. Validation and test data never influence these
-parameters. BRFSS categorical and sentinel survey codes are intentionally left
-unchanged until their meanings are verified against the feature codebook.
-
-The codebook-aware alternative converts only the per-variable sentinel values
-documented by the official CDC 2015 BRFSS codebook. It median-imputes and
-standardizes numeric variables, adds numeric missingness indicators, and
-one-hot encodes categorical variables with a separate missing category. All
-categories and statistics are learned from the training partition only:
-
-```python
-from src.preprocessing import BRFSSPreprocessor
-
-preprocessor = BRFSSPreprocessor()
-x_train_processed = preprocessor.fit_transform(x_train, feature_names)
-x_validation_processed = preprocessor.transform(x_validation)
-```
-
-Use it in the SVM evaluation with:
-
-```bash
-python evaluate_svm.py \
-  --data-dir ../../dataset \
-  --preprocessing brfss \
-  --max-rows 50000 \
-  --lambda 0.01 \
-  --gamma 0.0001 \
-  --max-iters 200000
-```
-
-The transformed matrix is stored as `float32` because dense one-hot encoding
-increases the number of columns. Optional-module features can be removed with,
-for example, `--max-missing-rate 0.5`; the threshold is fitted on training data.
-
-## Classification metrics
-
-All models are evaluated through the same NumPy-only metrics implementation:
-
-```python
-from src.metrics import classification_metrics
-
-metrics = classification_metrics(y_validation, y_pred)
-print(metrics["recall"], metrics["f1_score"], metrics["balanced_accuracy"])
-```
-
-The returned dictionary contains confusion-matrix counts, accuracy, precision,
-recall, specificity, F1-score, and balanced accuracy. Balanced accuracy and
-recall are especially important because the Project 1 target is imbalanced.
-
-## Required implementations
-
-`implementations.py` must provide:
-
-- `mean_squared_error_gd`
-- `mean_squared_error_sgd`
-- `least_squares`
-- `ridge_regression`
-- `logistic_regression`
-- `reg_logistic_regression`
-
-Each function returns `(w, loss)`, where `w` is a one-dimensional NumPy array.
-
-## Running the project
-
-Train the selected BRFSS-preprocessed Linear SVM on all labeled rows and create
-the AIcrowd submission with one command:
+From the repository root, run:
 
 ```bash
 python3 run.py \
   --data-dir ../../dataset \
-  --output outputs/submission-svm-brfss.csv
+  --output outputs/best-submission.csv
 ```
 
-The default final configuration is the complete-data validation winner for
-balanced accuracy and recall: `lambda=0.01`, `gamma=0.0001`, 200,000 updates,
-automatic positive-class weighting, `seed=42`, and the validation-selected
-decision threshold `0.5008938106`. `run.py` fits every
-preprocessing statistic and category on the complete training set, trains the
-model, predicts the 109,379 test rows, validates the labels, and preserves the
-test IDs in their original order.
+`run.py` performs the complete workflow: it loads the raw course CSVs, fits
+preprocessing on all labeled rows, trains the final class-weighted linear SVM,
+predicts the test set, validates the IDs and labels, and writes the AIcrowd CSV.
+No pretrained weights are required. Full training uses dense one-hot features
+and 200,000 stochastic updates, so it can take several minutes and requires
+sufficient memory.
 
-The generated CSV is intentionally excluded from Git and should be uploaded
-manually to AIcrowd. Use `--max-train-rows` only for development smoke tests,
-not for the final submission.
+With the released course dataset, the expected output is:
 
-This thresholded submission achieved an AIcrowd F1 score of 0.431 and accuracy
-of 0.866, closely matching the local validation scores of 0.432 and 0.868.
-Pass `--decision-threshold 0` only to reproduce the earlier operating point.
-
-## Evaluating the linear SVM
-
-Run the NumPy-only linear soft-margin SVM on a leakage-safe local validation
-split. By default, the command loads 50,000 rows for a quick development run:
-
-```bash
-python evaluate_svm.py --data-dir ../../dataset
+```text
+rows:                 109379
+positive predictions: 16277
+negative predictions: 93102
+labels:               {-1, +1}
+SHA-256:              8205f3b0616353fc47157c9e88a8062e2d1ee6fba9f94c350326943702b88282
 ```
 
-The report compares the SVM against an all-negative dummy baseline using
-accuracy, balanced accuracy, precision, recall, F1-score and specificity.
-Because the target is imbalanced, the default experiment weights positive-class
-hinge loss by `num_negative / num_positive`, calculated from the training split
-only. Pass `--positive-class-weight 1` to disable this balancing.
-Hyperparameters can be changed explicitly:
+This file corresponds to AIcrowd submission `338115`, which achieved positive-
+class F1 `0.431` and accuracy `0.866`. The local validation estimates were F1
+`0.432` and accuracy `0.868`.
+
+### Final model configuration
+
+- Model: class-weighted linear soft-margin SVM implemented in NumPy
+- Preprocessing: codebook-aware BRFSS missing-value handling, median imputation,
+  numeric standardization, missingness indicators, and categorical one-hot
+  encoding
+- Training data: all 328,135 labeled rows
+- Processed representation: 1,195 columns including the intercept
+- Positive-class hinge-loss weight: `num_negative / num_positive = 10.3248`
+- L2 strength: `lambda = 0.01`
+- Learning rate: `0.0001`
+- Stochastic updates: `200000`
+- Random seed: `42`
+- Decision threshold: `0.5008938105844928`
+
+The threshold is applied after training: a test example is predicted as `+1`
+when `x @ w >= 0.5008938105844928`, and as `-1` otherwise. Passing
+`--decision-threshold 0` reproduces the earlier operating point, not the best
+submission.
+
+## Data placement
+
+The dataset is supplied by the course and is intentionally excluded from Git.
+Place the unchanged files in one directory:
+
+```text
+dataset/
+├── x_train.csv
+├── y_train.csv
+├── x_test.csv
+└── sample_submission.csv    # optional reference; run.py does not read it
+```
+
+The default repository layout expects this directory at `../../dataset`.
+Alternatively, pass any location through `--data-dir`.
+
+The loaders verify headers, unique integer IDs, feature alignment, and labels.
+Empty feature fields become `np.nan`. Training labels use `{-1, +1}`; the
+loader can convert them to `{0, 1}` for the required logistic-regression
+functions. No external dataset is used.
+
+## Final pipeline
+
+### Data preparation and feature generation
+
+`BRFSSPreprocessor` learns every transformation from its training input only:
+
+1. Map only feature-specific sentinel codes documented in the official 2015
+   BRFSS codebook (for example, "Don't know" and "Refused") to missing values.
+2. Drop unusable all-missing or constant columns.
+3. Median-impute numeric features and standardize them with training means and
+   standard deviations.
+4. Add a binary missingness indicator for numeric columns that contain missing
+   values.
+5. One-hot encode categorical variables using categories observed during fit,
+   including a separate missing category when required. Unseen categories in
+   validation or test rows map to an all-zero block.
+6. Add an intercept column.
+
+The final fit on all labeled rows drops three raw features and produces 1,195
+columns including the intercept. Test data never influence preprocessing.
+
+### Validation and model selection
+
+We used one 80/20 stratified holdout with seed `42`: 262,508 training rows and
+65,627 validation rows. We did not use k-fold cross-validation. All
+preprocessing was fitted on the training partition and reused unchanged for
+validation. Because only 8.83% of labels are positive, we compared accuracy,
+balanced accuracy, precision, recall, specificity, and positive-class F1.
+
+The final SVM hyperparameters were selected from reproducible holdout
+experiments. We then evaluated 302 thresholds derived from validation decision
+scores. Threshold `0.5008938105844928` maximized positive-class F1, with
+balanced accuracy as the tie-break. Finally, `run.py` refits the same pipeline
+on all labeled rows before predicting the competition test set.
+
+For comparison, the report also evaluates:
+
+- L2-regularized logistic regression with balanced sampling and Basic
+  preprocessing;
+- a NumPy random forest with a functional-limitation feature;
+- an all-negative reference showing why raw accuracy is misleading.
+
+## Six required implementations
+
+The root-level `implementations.py` provides the exact required functions:
+
+```python
+mean_squared_error_gd(y, tx, initial_w, max_iters, gamma)
+mean_squared_error_sgd(y, tx, initial_w, max_iters, gamma)
+least_squares(y, tx)
+ridge_regression(y, tx, lambda_)
+logistic_regression(y, tx, initial_w, max_iters, gamma)
+reg_logistic_regression(y, tx, lambda_, initial_w, max_iters, gamma)
+```
+
+All return `(w, loss)` with `w` as a one-dimensional array. The MSE includes
+the required factor `0.5`; SGD uses mini-batch size 1; least squares does not
+use `numpy.linalg.lstsq`; and the returned ridge/logistic losses exclude the
+regularization penalty, as required by the project specification.
+
+`implementations.py` also contains the custom linear SVM and random-forest
+components used in the experiments.
+
+## Reproduce validation experiments
+
+Evaluate the selected SVM on the complete 80/20 split:
 
 ```bash
-python evaluate_svm.py \
+python3 evaluate_svm.py \
   --data-dir ../../dataset \
-  --lambda 0.03 \
-  --gamma 0.0003 \
-  --max-iters 100000 \
-  --positive-class-weight 0 \
+  --max-rows 0 \
+  --preprocessing brfss \
+  --lambda 0.01 \
+  --gamma 0.0001 \
+  --max-iters 200000 \
   --seed 42
 ```
 
-Use `--max-rows 0` only when you want to load the complete training dataset.
-
-Run a reproducible hyperparameter search on one shared split and preprocessing
-fit. Results are ranked by balanced accuracy, then F1-score and recall:
+Regenerate the threshold analysis and report assets:
 
 ```bash
-python tune_svm.py \
-  --max-rows 50000 \
-  --lambdas 0.001,0.01,0.1 \
-  --class-weight-multipliers 0.5,0.75,1,1.25 \
-  --gammas 0.001 \
-  --iteration-values 100000
-```
+python3 generate_svm_threshold_figure.py \
+  --data-dir ../../dataset \
+  --max-rows 0 \
+  --lambda 0.01 \
+  --gamma 0.0001 \
+  --max-iters 200000 \
+  --seed 42 \
+  --output-dir report/svm/assets
 
-Generate the complete-data SVM statistics, inspectable CSV/JSON outputs, and
-report figures with:
-
-```bash
 python3 generate_svm_report_assets.py \
   --data-dir ../../dataset \
   --max-rows 0 \
   --output-dir report/svm/assets
 ```
 
-The standalone Overleaf report is `report/svm/svm-report.tex`; the modular
-`report/svm/svm-section.tex` can be merged into the final team report.
+Random-forest experiments and their saved logs are under `rf_experiments/`.
+The report source is under `report/`.
 
-## Reproducibility
+## Dependencies and rule compliance
 
-Before final submission, this repository must document:
+Required for training and submission generation:
 
-- data-cleaning decisions;
-- feature transformations;
-- validation split or cross-validation procedure;
-- model and hyperparameter choices;
-- the exact command that reproduces the submitted prediction file.
+- Python 3
+- NumPy
+
+Matplotlib is used only by optional report-figure scripts. The modeling pipeline
+does not use pandas, scikit-learn, PyTorch, TensorFlow, or another external ML
+library. It does not use external training data.
+
+## Tests
+
+Run the repository tests from the project root:
+
+```bash
+python3 -m unittest discover -s tests -p 'test_*.py'
+python3 -m compileall -q .
+```
+
+For a fast end-to-end smoke test without replacing the final submission:
+
+```bash
+python3 run.py \
+  --data-dir ../../dataset \
+  --max-train-rows 2000 \
+  --max-iters 100 \
+  --output outputs/smoke-test.csv
+```
+
+The official public grading tests can also be run from the course repository's
+`projects/project1/grading_tests` directory by passing this repository path to
+`--github_link`. Those tests check the required files, signatures, docstrings,
+formatting, and numerical outputs.
+
+## Repository structure
+
+```text
+.
+├── README.md
+├── implementations.py          # Six required methods + custom models
+├── run.py                      # Exact best-submission reproduction
+├── evaluate_svm.py             # Leakage-safe SVM validation
+├── tune_svm.py                 # SVM hyperparameter experiments
+├── explore_data.py             # Data-quality profiling
+├── src/
+│   ├── brfss_2015.py           # Verified BRFSS codebook metadata
+│   ├── data_io.py              # CSV loading and ID/label validation
+│   ├── preprocessing.py        # Splits and fitted transformations
+│   ├── metrics.py              # NumPy classification metrics
+│   └── submission.py           # AIcrowd CSV validation and writing
+├── rf_experiments/             # Random-forest experiments and logs
+├── report/                     # LaTeX sources and generated figures
+└── tests/                      # Repository unit tests
+```
+
+Generated predictions, raw data, caches, and temporary artifacts are excluded
+from Git. Submit the repository using a GitHub URL pinned to the final commit.
