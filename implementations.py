@@ -655,6 +655,7 @@ def _build_tree(x, y, depth, max_depth, min_samples_split, n_features, rng, crit
             "left": left, "right": right}
 
 
+
 def _predict_tree_flat(flat, tx):
     """
     Batched traversal of one tree over all rows of tx.

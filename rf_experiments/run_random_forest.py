@@ -22,6 +22,7 @@ sys.path.insert(0, str(ROOT))
 from src.data_io import load_training_data                      # noqa: E402
 from src.preprocessing import (                                 # noqa: E402
     BasicPreprocessor,
+    BRFSSPreprocessor,
     stratified_split_indices,
 )
 from src.metrics import classification_metrics                  # noqa: E402
@@ -34,8 +35,15 @@ from implementations import (                                   # noqa: E402
 # --------------------------------------------------------------------------------------
 # CLI
 # --------------------------------------------------------------------------------------
+def _parse_bool(value):
+    if value.lower() in ("true", "false"):
+        return value.lower() == "true"
+    raise argparse.ArgumentTypeError("expected TRUE or FALSE (case-insensitive)")
+
+
 def parse_args():
     parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--basic", type=_parse_bool, default=False)
     parser.add_argument("--data-dir", type=Path, default=ROOT / "dataset", help="Directory containing the 4 CSV files.")
     parser.add_argument("--max-rows", type=int, default=None, help="Only load the first N rows (quick smoke test).")
     parser.add_argument("--validation-ratio", type=float, default=0.2)
@@ -58,6 +66,28 @@ def parse_args():
 # --------------------------------------------------------------------------------------
 # Helpers
 # --------------------------------------------------------------------------------------
+def append_limitation_count(x, feature_names):
+    """Append a numeric Yes count, or NaN unless all five answers are valid.
+
+    CDC 2015 BRFSS codebook, demographics sections 7.24-7.28:
+    1 = Yes, 2 = No; 7/9 and missing answers do not define a count.
+    """
+    x = np.asarray(x)
+    feature_names = tuple(feature_names)
+    if x.ndim != 2 or x.shape[1] != len(feature_names):
+        raise ValueError("feature_names must match the columns of a 2D x")
+    if "limitation_count" in feature_names:
+        raise ValueError("limitation_count already exists")
+    required = ("BLIND", "DECIDE", "DIFFWALK", "DIFFDRES", "DIFFALON")
+    missing = [name for name in required if name not in feature_names]
+    if missing:
+        raise ValueError(f"Missing required limitation columns: {', '.join(missing)}")
+    answers = x[:, [feature_names.index(name) for name in required]]
+    valid = np.all(np.isfinite(answers) & ((answers == 1) | (answers == 2)), axis=1)
+    counts = np.where(valid, np.sum(answers == 1, axis=1), np.nan)
+    return np.column_stack((x, counts)), feature_names + ("limitation_count",)
+
+
 def _parse_max_features(value):
     """Convert the CLI string to whatever random_forest_classifier expects."""
     if value in ("sqrt", "log"):
@@ -149,10 +179,17 @@ def main():
     # 3. Preprocess (median impute + standardize, leakage-safe)
     # ------------------------------------------------------------------------------
     print("[3/6] Preprocessing ...")
-    pre = BasicPreprocessor()
+    x_train_raw, augmented_feature_names = append_limitation_count(x_train_raw, feature_names)
+    x_val_raw, _ = append_limitation_count(x_val_raw, feature_names)
+    feature_names = augmented_feature_names
+    pre = BasicPreprocessor() if args.basic else BRFSSPreprocessor()
+    print(f"basic            : {str(args.basic).upper()}")
+    print(f"preprocessor     : {type(pre).__name__}")
+    print(f"input_features   : {x.shape[1]} raw, {len(feature_names)} with engineered feature")
     x_train = pre.fit_transform(x_train_raw, feature_names=feature_names)
     x_val = pre.transform(x_val_raw)
-    print(f"      kept {x_train.shape[1]}/{x.shape[1]} features")
+    print(f"output_features  : train={x_train.shape[1]}, validation={x_val.shape[1]}")
+    print(f"      kept {x_train.shape[1]}/{len(feature_names)} features")
     print(f"      dropped: {len(pre.dropped_features_)}")
 
     # ------------------------------------------------------------------------------
@@ -172,6 +209,7 @@ def main():
         seed=args.seed,
         class_balance=args.class_balance,
     )
+    print(f"n_features_per_split: {model['n_features_per_split']}")
     train_time = time.time() - t0
     print(f"      train_time = {train_time:.2f}s")
     print(f"      train_loss = {train_loss:.6f}")
@@ -199,6 +237,11 @@ def main():
     print()
     print(f">>> Best threshold by F1: {best_t} (F1 = {best_f1:.4f})")
 
+    best_metrics = results[best_t]
+    print(f"    accuracy={best_metrics['accuracy']:.4f}, "
+          f"precision={best_metrics['precision']:.4f}, recall={best_metrics['recall']:.4f}")
+    f1_at_half = evaluate_at_thresholds(y_val, prob_val, [0.5])[0.5]["f1_score"]
+
     # ------------------------------------------------------------------------------
     # 6. Summary
     # ------------------------------------------------------------------------------
@@ -208,7 +251,7 @@ def main():
           f"{'train_time(s)':>14}")
     print(
         f"{'RandomForest':<25} {args.criterion:<10} "
-        f"{results[0.5]['f1_score']:>10.4f} {best_f1:>10.4f} "
+        f"{f1_at_half:>10.4f} {best_f1:>10.4f} "
         f"{train_time:>14.2f}"
     )
 
